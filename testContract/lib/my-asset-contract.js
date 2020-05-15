@@ -31,6 +31,10 @@ class MyAssetContract extends Contract {
         console.log('===============END: Instantiating Ledger================');
     }
 
+    // async addVoter(ctx, username){
+    //     await ctx.stub.putState(username, Buffer.from(JSON.stringify({voted: false})));
+    // }
+
     async queryParties(ctx, partyNumber) {
         const partyAsBytes = await ctx.stub.getState(partyNumber);
         if (!partyAsBytes || partyAsBytes.length === 0) {
@@ -41,6 +45,16 @@ class MyAssetContract extends Contract {
     }
 
     async incrementVote(ctx, partyNumber) {
+        const voterID = ctx.clientIdentity.getAttributeValue('hf.EnrollmentID');
+        const voterBuffer = await ctx.stub.getState(voterID);
+        if (voterBuffer.length == 0) {
+            await ctx.stub.putState(
+                voterID,
+                Buffer.from(JSON.stringify({ voted: true }))
+            );
+        } else {
+            throw new Error('Voter has already voted!!!');
+        }
         const partyAsBytes = await ctx.stub.getState(partyNumber);
         if (!partyAsBytes || partyAsBytes.length === 0) {
             throw new Error(`${partyNumber} does not exist`);
@@ -65,6 +79,37 @@ class MyAssetContract extends Contract {
             Buffer.from(JSON.stringify(partyObj))
         );
         console.info('================ END: Car Created ==================');
+    }
+
+    async showAllParties(ctx) {
+        const startKey = 'PARTY0';
+        const endKey = 'PARTY999';
+
+        const allResults = [];
+        const iterator = await ctx.stub.getStateByRange(startKey, endKey);
+        while (true) {
+            const res = await iterator.next();
+
+            if (res.value && res.value.value.toString()) {
+                console.log(res.value.value.toString('utf8'));
+
+                const Key = res.value.key;
+                let Record;
+                try {
+                    Record = JSON.parse(res.value.value.toString('utf8'));
+                } catch (err) {
+                    console.log(err);
+                    Record = res.value.value.toString('utf8');
+                }
+                allResults.push({ Key, Record });
+            }
+            if (res.done) {
+                console.log('end of data');
+                await iterator.close();
+                console.info(allResults);
+                return JSON.stringify(allResults);
+            }
+        }
     }
 }
 

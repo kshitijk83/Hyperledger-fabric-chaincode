@@ -1,6 +1,6 @@
 {
     "name": "testContract",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "My Smart Contract",
     "main": "index.js",
     "engines": {
@@ -23,7 +23,7 @@
     "devDependencies": {
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
-        "eslint": "^7.0.0",
+        "eslint": "^6.8.0",
         "mocha": "^6.2.0",
         "nyc": "^14.1.1",
         "sinon": "^7.4.1",
