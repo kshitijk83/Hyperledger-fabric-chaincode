@@ -1,6 +1,6 @@
 {
     "name": "testContract",
-    "version": "2.0.0",
+    "version": "10.0.0",
     "description": "My Smart Contract",
     "main": "index.js",
     "engines": {
