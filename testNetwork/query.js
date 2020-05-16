@@ -2,45 +2,50 @@
 
 const { Gateway, FileSystemWallet  } =require('fabric-network')
 const path = require('path')
-const fs = require('fs')
 
-const configPath = path.join(process.cwd(), 'config.json')
-const configJSON = fs.readFileSync(configPath, 'utf8')
-const config = JSON.parse(configJSON)
+const { objGenerator } = require('./utils')
+
+const config = objGenerator('config.json')
 
 // Configuration file path
-const ccpPath = path.join(process.cwd(), config.connection_file)
-const ccpJSON = fs.readFileSync(ccpPath)
-const ccp = JSON.parse(ccpJSON)
+const ccp = objGenerator(config.connection_file);
+
+// query
+const query = config.query
 
 async function main(){
+  const gateway = new Gateway()
   try {
     // connecting to wallet
-    const walletPath = path.join(process.cwd(), 'wallet1')
+    const walletPath = path.join(process.cwd(), config.wallet)
     const wallet = new FileSystemWallet(walletPath)
 
-    const identityExists = await wallet.exists('org1Admin')
+    const identityExists = await wallet.exists(config.user)
     if(!identityExists){
-      throw new Error(`org1Admin identity doesn't exist`)
+      throw new Error(`${config.user} identity doesn't exist`)
     }
 
     // creating a new gateway giving it network configruation and connection profile
     console.info('connecting to gateway....')
-    const gateway = new Gateway()
-    await gateway.connect(ccp,{ wallet: wallet, identity: 'org1Admin', discovery: {enabled: true, asLocalhost: true}})
+    await gateway.connect(ccp,{ wallet: wallet, identity: config.user, discovery: {enabled: true, asLocalhost: true}})
+    
     // connection to a channel
     console.log('connecting to network....')
-    const network = await gateway.getNetwork('mychannel')
+    const network = await gateway.getNetwork(config.channel)
+    
     // fetching contract from connected network
-    const contract = network.getContract('testContract')
+    const contract = network.getContract(config.contract)
 
-    const result = await contract.evaluateTransaction('queryParties', 'PARTY0')
+    const result = await contract.evaluateTransaction(query.fcn, ...query.args)
 
     console.log(`result: ${result.toString()}`)
 
   } catch (error) {
     console.error(`Failed to evaluate transaction: ${error}`);
     process.exit(1);
+  } finally{
+    console.log('Disconnecting gateway....')
+    gateway.disconnect();
   }
 }
 

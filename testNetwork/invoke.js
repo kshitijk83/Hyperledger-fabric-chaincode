@@ -1,65 +1,44 @@
 'use strict';
 
-const yaml = require('js-yaml');
-const { FileSystemWallet, Gateway } = require('fabric-network');
-const fs = require('fs');
+const { Gateway, FileSystemWallet } = require('fabric-network')
+const path = require('path')
+const fs = require('fs')
+const { objGenerator } = require('./utils')
 
-// A wallet stores a collection of identities for use
-const wallet = new FileSystemWallet('./wallet1/org1');
+const config = objGenerator('config.json')
 
-async function main() {
+const ccp = objGenerator(config.connection_file)
 
-  // A gateway defines the peers used to access Fabric networks
+const invoke = config.invoke
+
+async function main(){
   const gateway = new Gateway();
 
-  // Main try/catch block
   try {
+    const walletPath = path.join(process.cwd(), config.wallet)
+    const wallet = new FileSystemWallet(walletPath) 
+    
+    const identityExists = await wallet.exists(config.user)
+    if(!identityExists){
+      throw new Error(`${config.user} identity doesn't exist`)
+    }
+    console.info('connecting to gateway....')
+    await gateway.connect(ccp, {wallet, identity: config.user, discovery:{enabled:true, asLocalhost:true}})
 
-    const identityLabel = 'org1Admin';
-    let connectionProfile = yaml.safeLoad(fs.readFileSync('./connection1.json', 'utf8'));
+    const network = await gateway.getNetwork(config.channel)
+    const contract = await network.getContract(config.contract)
 
-    let connectionOptions = {
-      identity: identityLabel,
-      wallet: wallet,
-      discovery: { enabled: true, asLocalhost: true }
-    };
-
-    // Connect to gateway using network.yaml file and our certificates in _idwallet directory
-    await gateway.connect(connectionProfile, connectionOptions);
-
-    console.log('Connected to Fabric gateway.');
-
-    // Connect to our local fabric
-    const network = await gateway.getNetwork('mychannel');
-
-    console.log('Connected to mychannel. ');
-
-    // Get the contract we have installed on the peer
-    const contract = await network.getContract('testContract');
-
-    console.log('\nSubmit hello world transaction.');
-
-    let response = await contract.submitTransaction('incrementVote', 'PARTY1');
-    console.log(response.toString());
-    return response;
-
+    const result = await contract.submitTransaction(invoke.fcn, ...invoke.args)
+    console.log(`result: ${result.toString()}`)
 
   } catch (error) {
-    console.log(`Error processing transaction. ${error}`);
-    console.log(error.stack);
-  } finally {
-    // Disconnect from the gateway
-    console.log('Disconnect from Fabric gateway.');
+    console.error(`Failed to evaluate transaction: ${error}`);
+    process.exit(1);
+  } finally{
+    console.log('Disconnecting gateway....')
     gateway.disconnect();
   }
+
 }
 
-// invoke the main function, can catch any error that might escape
-main().then(() => {
-  console.log('done');
-}).catch((e) => {
-  console.log('Final error checking.......');
-  console.log(e);
-  console.log(e.stack);
-  process.exit(-1);
-});
+main()

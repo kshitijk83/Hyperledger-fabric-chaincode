@@ -1,3 +1,18 @@
 {
-    "connection_file": "connection1.json"
+    "connection_file": "connection1.json",
+    "user": "org1Admin",
+    "wallet": "wallet1",
+    "channel": "mychannel",
+    "contract": "testContract",
+    "query":
+        {
+            "fcn": "queryParties",
+            "args": ["PARTY0"]
+        }
+    ,
+    "invoke":
+        {
+            "fcn": "incrementVote",
+            "args": ["PARTY0"]
+        }
 }
