@@ -5,7 +5,7 @@ const { FileSystemWallet, Gateway } = require('fabric-network');
 const fs = require('fs');
 
 // A wallet stores a collection of identities for use
-const wallet = new FileSystemWallet('./_idwallet');
+const wallet = new FileSystemWallet('./wallet1/org1');
 
 async function main() {
 
@@ -15,12 +15,13 @@ async function main() {
   // Main try/catch block
   try {
 
-    const identityLabel = 'User1@org1.example.com';
-    let connectionProfile = yaml.safeLoad(fs.readFileSync('./network.yaml', 'utf8'));
+    const identityLabel = 'org1Admin';
+    let connectionProfile = yaml.safeLoad(fs.readFileSync('./connection1.json', 'utf8'));
 
     let connectionOptions = {
       identity: identityLabel,
-      wallet: wallet
+      wallet: wallet,
+      discovery: { enabled: true, asLocalhost: true }
     };
 
     // Connect to gateway using network.yaml file and our certificates in _idwallet directory
@@ -34,12 +35,12 @@ async function main() {
     console.log('Connected to mychannel. ');
 
     // Get the contract we have installed on the peer
-    const contract = await network.getContract('demoContract');
+    const contract = await network.getContract('testContract');
 
     console.log('\nSubmit hello world transaction.');
 
-    let response = await contract.submitTransaction('transaction1', 'hello');
-    console.log(JSON.parse(response.toString()));
+    let response = await contract.submitTransaction('incrementVote', 'PARTY1');
+    console.log(response.toString());
     return response;
 
 

@@ -1,65 +1,47 @@
 'use strict';
 
-const yaml = require('js-yaml');
-const { FileSystemWallet, Gateway } = require('fabric-network');
-const fs = require('fs');
+const { Gateway, FileSystemWallet  } =require('fabric-network')
+const path = require('path')
+const fs = require('fs')
 
-// A wallet stores a collection of identities for use
-const wallet = new FileSystemWallet('./wallet');
+const configPath = path.join(process.cwd(), 'config.json')
+const configJSON = fs.readFileSync(configPath, 'utf8')
+const config = JSON.parse(configJSON)
 
-async function main() {
+// Configuration file path
+const ccpPath = path.join(process.cwd(), config.connection_file)
+const ccpJSON = fs.readFileSync(ccpPath)
+const ccp = JSON.parse(ccpJSON)
 
-  // A gateway defines the peers used to access Fabric networks
-  const gateway = new Gateway();
-
-  // Main try/catch block
+async function main(){
   try {
+    // connecting to wallet
+    const walletPath = path.join(process.cwd(), 'wallet1')
+    const wallet = new FileSystemWallet(walletPath)
 
-    const identityLabel = 'org1Admin';
-    let connectionProfile = yaml.safeLoad(fs.readFileSync('./network.yaml', 'utf8'));
+    const identityExists = await wallet.exists('org1Admin')
+    if(!identityExists){
+      throw new Error(`org1Admin identity doesn't exist`)
+    }
 
-    let connectionOptions = {
-      identity: identityLabel,
-      wallet: wallet,
-      discovery: { enabled: true, asLocalhost: true }
-    };
-
-    // Connect to gateway using network.yaml file and our certificates in _idwallet directory
-    await gateway.connect(connectionProfile, connectionOptions);
-
-    console.log('Connected to Fabric gateway.');
-
-    // Connect to our local fabric
-    const network = await gateway.getNetwork('mychannel');
-
-    // const channel = network.getChannel();
+    // creating a new gateway giving it network configruation and connection profile
+    console.info('connecting to gateway....')
+    const gateway = new Gateway()
+    await gateway.connect(ccp,{ wallet: wallet, identity: 'org1Admin', discovery: {enabled: true, asLocalhost: true}})
+    // connection to a channel
+    console.log('connecting to network....')
+    const network = await gateway.getNetwork('mychannel')
+    // fetching contract from connected network
     const contract = network.getContract('testContract')
-    
-    //set up our request - specify which chaincode, which function, and which arguments
-    // let request = { chaincodeId: 'testContract', fcn: 'queryParties', args: ['PARTY0'] };
-    
-    //query the ledger by the key in the args above
-    // let resultBuffer = await channel.queryByChaincode(request);
-    const resultBuffer = await contract.evaluateTransaction('queryParties', 'PARTY0');
-    
-    console.log(JSON.parse(resultBuffer.toString()))
+
+    const result = await contract.evaluateTransaction('queryParties', 'PARTY0')
+
+    console.log(`result: ${result.toString()}`)
 
   } catch (error) {
-    console.log(`Error processing transaction. ${error}`);
-    console.log(error.stack);
-  } finally {
-    // Disconnect from the gateway
-    console.log('Disconnect from Fabric gateway.');
-    gateway.disconnect();
+    console.error(`Failed to evaluate transaction: ${error}`);
+    process.exit(1);
   }
 }
 
-// invoke the main function, can catch any error that might escape
-main().then(() => {
-  console.log('done');
-}).catch((e) => {
-  console.log('Final error checking.......');
-  console.log(e);
-  console.log(e.stack);
-  process.exit(-1);
-});
+main()
