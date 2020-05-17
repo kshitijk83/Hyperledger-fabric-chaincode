@@ -1,6 +1,8 @@
 {
     "connection_file": "connection1.json",
-    "user": "org1Admin",
+    "adminUser": "admin",
+    "orgMSPID": "Org1MSP",
+    "user": "org1Test",
     "wallet": "wallet1",
     "channel": "mychannel",
     "contract": "testContract",
@@ -15,4 +17,5 @@
             "fcn": "incrementVote",
             "args": ["PARTY0"]
         }
+    
 }
